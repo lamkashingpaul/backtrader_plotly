@@ -83,7 +83,7 @@ class PlotScheme(object):
 
         # Default plotstyle for the OHLC bars which (line -> line on close)
         # Other options: 'bar' and 'candle'
-        self.style = 'candle'
+        self.style = 'line'
 
         # Default color for the 'line on close' plot
         self.loc = 'black'
@@ -159,6 +159,8 @@ class PlotScheme(object):
 
         # strftime Format string for the display of data points values
         self.fmt_x_data = None
+
+        self.decimalprecision = 5
 
     def color(self, idx):
         colidx = tab10_index[idx % len(tab10_index)]

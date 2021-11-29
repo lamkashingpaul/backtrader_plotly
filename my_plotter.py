@@ -6,7 +6,22 @@ import collections
 import datetime
 import math
 import numpy as np
+import operator
 import plotly.graph_objects as go
+
+# Mapper from matplotlib to plotly
+line_style_mapper = {
+    '': 'solid',
+    '--': 'dash',
+    ':': 'dot',
+    '-.': 'dashdot',
+}
+
+marker_style_mapper = {
+    'o': 'circle',
+    '^': 'triangle-up',
+    'v': 'triangle-down',
+}
 
 
 class PInfo(object):
@@ -59,9 +74,6 @@ class PInfo(object):
 class MyPlottly(metaclass=bt.MetaParams):
     params = (
         ('scheme', PlotScheme()),
-        ('filename', None),
-        ('plotconfig', None),
-        ('output_mode', 'show'),
         ('show', True),
     )
 
@@ -108,16 +120,20 @@ class MyPlottly(metaclass=bt.MetaParams):
 
         figs = []
         for numfig in range(numfigs):
-            self.fig = fig = make_subplots(rows=self.pinf.nrows, cols=1)
-            figs.append(fig)
+            self.fig = make_subplots(rows=self.pinf.nrows,
+                                     cols=1,
+                                     shared_xaxes=True,
+                                     vertical_spacing=0.02,
+                                     specs=[[{'secondary_y': True}] for _ in range(self.pinf.nrows)],
+                                     )
+            figs.append(self.fig)
 
             self.pinf.pstart, self.pinf.pend, self.pinf.psize = pranges[numfig]
             self.pinf.xstart = self.pinf.pstart
             self.pinf.xend = self.pinf.pend
 
             self.pinf.clock = strategy
-            self.pinf.xreal = self.pinf.clock.datetime.plot(
-                self.pinf.pstart, self.pinf.psize)
+            self.pinf.xreal = self.pinf.clock.datetime.plot(self.pinf.pstart, self.pinf.psize)
             self.pinf.xlen = len(self.pinf.xreal)
             self.pinf.x = list(range(self.pinf.xlen))
             # self.pinf.pfillers = {None: []}
@@ -161,6 +177,13 @@ class MyPlottly(metaclass=bt.MetaParams):
                 for ind in self.dplotsdown[data]:
                     self.plotind(data, ind, subinds=self.dplotsover[ind], upinds=self.dplotsup[ind], downinds=self.dplotsdown[ind])
 
+            # Figure style
+            self.fig.update_layout(height=3840, hovermode='x unified')
+            for i in range(self.pinf.nrows):
+                self.fig['layout'][f'xaxis{i + 1}']['showticklabels'] = True
+                # self.fig['layout'][f'xaxis{i + 1}']['tickmode'] = 'array'
+                # self.fig['layout'][f'xaxis{i + 1}']['ticktext'] = ['1' for x in self.pinf.xreal]
+
         return figs
 
     def newaxis(self, obj, rowspan):
@@ -182,7 +205,7 @@ class MyPlottly(metaclass=bt.MetaParams):
 
         return ax
 
-    def plotind(self, iref, ind, subinds=None, upinds=None, downinds=None, masterax=None):
+    def plotind(self, iref, ind, subinds=None, upinds=None, downinds=None, masterax=None, secondary_y=False):
         sch = self.p.scheme
 
         # check subind
@@ -245,7 +268,7 @@ class MyPlottly(metaclass=bt.MetaParams):
             if self.pinf.sch.linevalues and ind.plotinfo.plotlinevalues:
                 plotlinevalue = lineplotinfo._get('_plotvalue', True)
                 if plotlinevalue and not math.isnan(lplot[-1]):
-                    label += ' %.2f' % lplot[-1]
+                    label += f' {lplot[-1]:.{self.pinf.sch.decimalprecision}f}'
 
             plotkwargs = dict()
             linekwargs = lineplotinfo._getkwargs(skip_=True)
@@ -263,7 +286,7 @@ class MyPlottly(metaclass=bt.MetaParams):
 
             # pltmethod = getattr(ax, lineplotinfo._get('_method', 'plot'))
 
-            xdata, lplotarray = self.pinf.xdata, lplot
+            xdata, lplotarray = self.pinf.xreal, lplot  # use timestamp for x axis
             if lineplotinfo._get('_skipnan', False):
                 # Get the full array and a mask to skipnan
                 lplotarray = np.array(lplot)
@@ -273,23 +296,228 @@ class MyPlottly(metaclass=bt.MetaParams):
                 lplotarray = lplotarray[lplotmask]
                 xdata = np.array(xdata)[lplotmask]
 
-            self.pltmethod(ax, xdata, lplotarray, **plotkwargs)
+            # Convert timestamp to datetime
+            xdata = [bt.num2date(x) for x in xdata]
+
+            self.pltmethod(ax, xdata, lplotarray, secondary_y, **plotkwargs)
+
+            # Code to place a label at the right hand side with the last value
+            # vtags = lineplotinfo._get('plotvaluetags', True)
+            # if self.pinf.sch.valuetags and vtags:
+            #     linetag = lineplotinfo._get('_plotvaluetag', True)
+            #     if linetag and not math.isnan(lplot[-1]):
+            #         # line has valid values, plot a tag for the last value
+            #         self.drawtag(ax, len(self.pinf.xreal), lplot[-1],
+            #                      facecolor='white',
+            #                      edgecolor=self.pinf.color(ax))
+
+            farts = (('_gt', operator.gt), ('_lt', operator.lt), ('', None),)
+            for fcmp, fop in farts:
+                fattr = '_fill' + fcmp
+                fref, fcol = lineplotinfo._get(fattr, (None, None))
+                if fref is not None:
+                    y1 = np.array(lplot)
+                    if isinstance(fref, int):
+                        y2 = np.full_like(y1, fref)
+                    else:  # string, naming a line, nothing else is supported
+                        l2 = getattr(ind, fref)
+                        prl2 = l2.plotrange(self.pinf.xstart, self.pinf.xend)
+                        y2 = np.array(prl2)
+                    kwargs = dict()
+                    if fop is not None:
+                        kwargs['where'] = fop(y1, y2)
+
+                    falpha = self.pinf.sch.fillalpha
+                    if isinstance(fcol, (list, tuple)):
+                        fcol, falpha = fcol
+
+                    ax.fill_between(self.pinf.xdata, y1, y2,
+                                    facecolor=fcol,
+                                    alpha=falpha,
+                                    interpolate=True,
+                                    **kwargs)
 
         # plot subindicators that were created on self
         for subind in subinds:
             self.plotind(iref, subind, subinds=self.dplotsover[subind], masterax=ax)
 
-    def pltmethod(self, ax, xdata, lplotarray, **plotkwargs):
+        # plot subindicators on self with independent axis below
+        for downind in downinds:
+            self.plotind(iref, downind)
+
+    def pltmethod(self, ax, xdata, lplotarray, secondary_y, **plotkwargs):
         print(ax, plotkwargs)
 
+        opacity = 1
+        line = dict(color=plotkwargs['color'])  # line or marker style
+        if 'marker' in plotkwargs:
+            # Scatter plot
+            marker = dict(symbol=marker_style_mapper[plotkwargs['marker']])
+            self.fig.add_trace(go.Scatter(mode='markers',
+                                          x=np.array(xdata),
+                                          y=np.array(lplotarray),
+                                          name=plotkwargs['label'],
+                                          opacity=opacity,
+                                          marker=marker,
+                                          line=line,
+                                          ), row=ax, col=1, secondary_y=secondary_y
+                               )
+        elif 'width' in plotkwargs:
+            # Bar plot
+            if 'alpha' in plotkwargs:
+                opacity = plotkwargs['alpha']
+            self.fig.add_trace(go.Bar(x=np.array(xdata),
+                                      y=np.array(lplotarray),
+                                      name=plotkwargs['label'],
+                                      opacity=opacity,
+                                      width=plotkwargs['width'],
+                                      ), row=ax, col=1, secondary_y=secondary_y
+                               )
+        else:
+            # Line plot
+            if 'ls' in plotkwargs:
+                line['dash'] = line_style_mapper[plotkwargs['ls']]
+
+            self.fig.add_trace(go.Scatter(x=np.array(xdata),
+                                          y=np.array(lplotarray),
+                                          name=plotkwargs['label'],
+                                          opacity=opacity,
+                                          line=line,
+                                          ), row=ax, col=1, secondary_y=secondary_y
+                               )
+
     def plotvolume(self, data, opens, highs, lows, closes, volumes, label):
-        pass
+        pmaster = data.plotinfo.plotmaster
+        if pmaster is data:
+            pmaster = None
+        voloverlay = (self.pinf.sch.voloverlay and pmaster is None)
+
+        # if sefl.pinf.sch.voloverlay:
+        if voloverlay:
+            rowspan = self.pinf.sch.rowsmajor
+        else:
+            rowspan = self.pinf.sch.rowsminor
+
+        ax = self.newaxis(data.volume, rowspan=rowspan)
+        print(ax, 'vol')
+
+        # if self.pinf.sch.voloverlay:
+        if voloverlay:
+            volalpha = self.pinf.sch.voltrans
+        else:
+            volalpha = 1.0
+
+        maxvol = volylim = max(volumes)
+        if maxvol:
+            # Plot the overlay volume
+            vollabel = label
+
+            # Get x axis data
+            xdata = self.pinf.xreal
+            xdata = [bt.num2date(x) for x in xdata]
+
+            self.fig.add_trace(go.Bar(x=np.array(xdata),
+                                      y=np.array(volumes),
+                                      name=label,
+                                      ), row=ax, col=1, secondary_y=False
+                               )
+            self.fig['layout'][f'yaxis{2 * ax - 1}']['range'] = [0, maxvol / self.pinf.sch.volscaling]
 
     def plotdata(self, data, indicators):
-        pass
+        for ind in indicators:
+            upinds = self.dplotsup[ind]
+            for upind in upinds:
+                self.plotind(data, upind,
+                             subinds=self.dplotsover[upind],
+                             upinds=self.dplotsup[upind],
+                             downinds=self.dplotsdown[upind])
+
+        opens = data.open.plotrange(self.pinf.xstart, self.pinf.xend)
+        highs = data.high.plotrange(self.pinf.xstart, self.pinf.xend)
+        lows = data.low.plotrange(self.pinf.xstart, self.pinf.xend)
+        closes = data.close.plotrange(self.pinf.xstart, self.pinf.xend)
+        volumes = data.volume.plotrange(self.pinf.xstart, self.pinf.xend)
+
+        vollabel = 'Volume'
+        pmaster = data.plotinfo.plotmaster
+        if pmaster is data:
+            pmaster = None
+
+        datalabel = ''
+        if hasattr(data, '_name') and data._name:
+            datalabel += data._name
+
+        voloverlay = (self.pinf.sch.voloverlay and pmaster is None)
+
+        if not voloverlay:
+            vollabel += ' ({})'.format(datalabel)
+
+        # if self.pinf.sch.volume and self.pinf.sch.voloverlay:
+        axdatamaster = None
+        if self.pinf.sch.volume and voloverlay:
+            volplot = self.plotvolume(data, opens, highs, lows, closes, volumes, vollabel)
+            axvol = self.pinf.daxis[data.volume]
+            ax = axvol
+            self.pinf.daxis[data] = ax
+            self.pinf.vaxis.append(ax)
+        else:
+            if pmaster is None:
+                ax = self.newaxis(data, rowspan=self.pinf.sch.rowsmajor)
+            elif getattr(data.plotinfo, 'sameaxis', False):
+                axdatamaster = self.pinf.daxis[pmaster]
+                ax = axdatamaster
+            else:
+                axdatamaster = self.pinf.daxis[pmaster]
+                ax = axdatamaster
+                self.pinf.vaxis.append(ax)
+
+        if hasattr(data, '_compression') and hasattr(data, '_timeframe'):
+            tfname = bt.TimeFrame.getname(data._timeframe, data._compression)
+            datalabel += ' (%d %s)' % (data._compression, tfname)
+
+        plinevalues = getattr(data.plotinfo, 'plotlinevalues', True)
+
+        # Get x axis data
+        xdata = self.pinf.xreal
+        xdata = [bt.num2date(x) for x in xdata]
+        if self.pinf.sch.style.startswith('line'):
+            if self.pinf.sch.linevalues and plinevalues:
+                datalabel += f' C:{closes[-1]:.{self.pinf.sch.decimalprecision}f}'
+
+            if axdatamaster is None:
+                color = self.pinf.sch.loc
+            else:
+                self.pinf.nextcolor(axdatamaster)
+                color = self.pinf.color(axdatamaster)
+
+            self.fig.add_trace(go.Scatter(x=np.array(xdata),
+                                          y=np.array(closes),
+                                          name=datalabel,
+                                          ), row=ax, col=1, secondary_y=True
+                               )
+
+        else:
+            pass
+
+        for ind in indicators:
+            self.plotind(data, ind, subinds=self.dplotsover[ind], masterax=ax, secondary_y=True)
+
+        a = axdatamaster or ax
+
+        for ind in indicators:
+            downinds = self.dplotsdown[ind]
+            for downind in downinds:
+                self.plotind(data, downind,
+                             subinds=self.dplotsover[downind],
+                             upinds=self.dplotsup[downind],
+                             downinds=self.dplotsdown[downind],
+                             secondary_y=True)
+
+        self.pinf.legpos[a] = len(self.pinf.handles[a])
 
     def show(self):
-        self.fig.show()
+        if self.p.show:
+            self.fig.show()
 
     def sortdataindicators(self, strategy):
         # These lists/dictionaries hold the subplots that go above each data

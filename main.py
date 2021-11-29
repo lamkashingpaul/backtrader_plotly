@@ -7,9 +7,10 @@ import sys  # To find out the script name (in argv[0])
 
 # Import the backtrader platform
 import backtrader as bt
+import plotly.io
 
 
-# Create a Stratey
+# Create a Strategy
 class TestStrategy(bt.Strategy):
     params = (
         ('maperiod', 15),
@@ -18,7 +19,7 @@ class TestStrategy(bt.Strategy):
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
         dt = dt or self.datas[0].datetime.date(0)
-        print('%s, %s' % (dt.isoformat(), txt))
+        # print('%s, %s' % (dt.isoformat(), txt))
 
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
@@ -155,5 +156,9 @@ if __name__ == '__main__':
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # Plot the result
-    cerebro.plot(MyPlottly())
-    cerebro.plot(style='candle')
+    figs = cerebro.plot(MyPlottly(show=True))
+    figs = [x for fig in figs for x in fig]  # flatten output
+    for fig in figs:
+        plotly.io.to_html(fig, full_html=False)
+        plotly.io.write_html(fig, file='temp.html')
+    # cerebro.plot(style='candle')
