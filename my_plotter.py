@@ -497,7 +497,24 @@ class MyPlottly(metaclass=bt.MetaParams):
                                )
 
         else:
-            pass
+            if self.pinf.sch.linevalues and plinevalues:
+                datalabel += (f' O:{opens[-1]:.{self.pinf.sch.decimalprecision}f} '
+                              f'H:{highs[-1]:.{self.pinf.sch.decimalprecision}f} '
+                              f'L:{lows[-1]:.{self.pinf.sch.decimalprecision}f} '
+                              f'C:{closes[-1]:.{self.pinf.sch.decimalprecision}f}'
+                              )
+            if self.pinf.sch.style.startswith('candle'):
+                self.fig.add_trace(go.Candlestick(x=np.array(xdata),
+                                                  open=np.array(opens),
+                                                  high=np.array(highs),
+                                                  low=np.array(lows),
+                                                  close=np.array(closes),
+                                                  increasing_line_color=self.pinf.sch.barup,
+                                                  decreasing_line_color=self.pinf.sch.bardown,
+                                                  name=datalabel,
+                                                  ), row=ax, col=1, secondary_y=True
+                                   )
+                self.fig['layout'][f'xaxis{ax}']['rangeslider']['visible'] = False
 
         for ind in indicators:
             self.plotind(data, ind, subinds=self.dplotsover[ind], masterax=ax, secondary_y=True)

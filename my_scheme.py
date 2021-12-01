@@ -83,7 +83,7 @@ class PlotScheme(object):
 
         # Default plotstyle for the OHLC bars which (line -> line on close)
         # Other options: 'bar' and 'candle'
-        self.style = 'line'
+        self.style = 'candle'
 
         # Default color for the 'line on close' plot
         self.loc = 'black'
