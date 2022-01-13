@@ -71,7 +71,7 @@ class PInfo(object):
         return self.zorder[ax]
 
 
-class BacktraderPlottly(metaclass=bt.MetaParams):
+class BacktraderPlotly(metaclass=bt.MetaParams):
     params = (
         ('scheme', PlotScheme()),
         ('show', True),
