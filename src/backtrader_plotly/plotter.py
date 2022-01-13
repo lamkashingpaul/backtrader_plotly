@@ -1,4 +1,4 @@
-from my_scheme import PlotScheme
+from .scheme import PlotScheme
 from plotly.subplots import make_subplots
 import backtrader as bt
 import bisect
@@ -71,7 +71,7 @@ class PInfo(object):
         return self.zorder[ax]
 
 
-class MyPlottly(metaclass=bt.MetaParams):
+class BacktraderPlottly(metaclass=bt.MetaParams):
     params = (
         ('scheme', PlotScheme()),
         ('show', True),
@@ -346,7 +346,7 @@ class MyPlottly(metaclass=bt.MetaParams):
             self.plotind(iref, downind)
 
     def pltmethod(self, ax, xdata, lplotarray, secondary_y, **plotkwargs):
-        print(ax, plotkwargs)
+        # print(ax, plotkwargs)
 
         opacity = 1
         line = dict(color=plotkwargs['color'])  # line or marker style
@@ -399,7 +399,7 @@ class MyPlottly(metaclass=bt.MetaParams):
             rowspan = self.pinf.sch.rowsminor
 
         ax = self.newaxis(data.volume, rowspan=rowspan)
-        print(ax, 'vol')
+        # print(ax, 'vol')
 
         # if self.pinf.sch.voloverlay:
         if voloverlay:
