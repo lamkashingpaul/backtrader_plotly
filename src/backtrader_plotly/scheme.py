@@ -51,7 +51,7 @@ tab10_index = [3, 0, 2, 1, 2, 4, 5, 6, 7, 8, 9]
 
 
 class PlotScheme(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
         # to have a tight packing on the chart wether only the x axis or also
         # the y axis have (see matplotlib)
         self.ytight = False
@@ -160,7 +160,11 @@ class PlotScheme(object):
         # strftime Format string for the display of data points values
         self.fmt_x_data = None
 
-        self.decimalprecision = 5
+        # decimal places of price for y-axis and hover of plot
+        self.decimal_places = kwargs.get('decimal_places', 5)
+
+        # maximum width of legend text
+        self.max_legend_text_width = kwargs.get('max_legend_text_width', 16)
 
     def color(self, idx):
         colidx = tab10_index[idx % len(tab10_index)]

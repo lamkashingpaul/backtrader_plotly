@@ -21,6 +21,9 @@ marker_style_mapper = {
     'o': 'circle',
     '^': 'triangle-up',
     'v': 'triangle-down',
+
+    '$\u21E7$': 'triangle-up',
+    '$\u21E9$': 'triangle-down',
 }
 
 
@@ -178,11 +181,10 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                     self.plotind(data, ind, subinds=self.dplotsover[ind], upinds=self.dplotsup[ind], downinds=self.dplotsdown[ind])
 
             # Figure style
-            self.fig.update_layout(height=3840, hovermode='x unified')
-            for i in range(self.pinf.nrows):
-                self.fig['layout'][f'xaxis{i + 1}']['showticklabels'] = True
-                # self.fig['layout'][f'xaxis{i + 1}']['tickmode'] = 'array'
-                # self.fig['layout'][f'xaxis{i + 1}']['ticktext'] = ['1' for x in self.pinf.xreal]
+            self.fig.update_layout(height=1280, hovermode='x unified')
+
+            # for i in range(self.pinf.nrows):
+            #     self.fig['layout'][f'xaxis{i + 1}']['showticklabels'] = True
 
         return figs
 
@@ -268,7 +270,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
             if self.pinf.sch.linevalues and ind.plotinfo.plotlinevalues:
                 plotlinevalue = lineplotinfo._get('_plotvalue', True)
                 if plotlinevalue and not math.isnan(lplot[-1]):
-                    label += f' {lplot[-1]:.{self.pinf.sch.decimalprecision}f}'
+                    label += f' {lplot[-1]:.{self.pinf.sch.decimal_places}f}'
 
             plotkwargs = dict()
             linekwargs = lineplotinfo._getkwargs(skip_=True)
@@ -352,11 +354,11 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         line = dict(color=plotkwargs['color'])  # line or marker style
         if 'marker' in plotkwargs:
             # Scatter plot
-            marker = dict(symbol=marker_style_mapper[plotkwargs['marker']])
+            marker = dict(symbol=marker_style_mapper.get(plotkwargs['marker'], 0))
             self.fig.add_trace(go.Scatter(mode='markers',
                                           x=np.array(xdata),
                                           y=np.array(lplotarray),
-                                          name=plotkwargs['label'],
+                                          name=self.wrap_legend_text(plotkwargs['label']),
                                           opacity=opacity,
                                           marker=marker,
                                           line=line,
@@ -368,7 +370,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                 opacity = plotkwargs['alpha']
             self.fig.add_trace(go.Bar(x=np.array(xdata),
                                       y=np.array(lplotarray),
-                                      name=plotkwargs['label'],
+                                      name=self.wrap_legend_text(plotkwargs['label']),
                                       opacity=opacity,
                                       width=plotkwargs['width'],
                                       ), row=ax, col=1, secondary_y=secondary_y
@@ -380,7 +382,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
 
             self.fig.add_trace(go.Scatter(x=np.array(xdata),
                                           y=np.array(lplotarray),
-                                          name=plotkwargs['label'],
+                                          name=self.wrap_legend_text(plotkwargs['label']),
                                           opacity=opacity,
                                           line=line,
                                           ), row=ax, col=1, secondary_y=secondary_y
@@ -418,7 +420,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
 
             self.fig.add_trace(go.Bar(x=np.array(xdata),
                                       y=np.array(volumes),
-                                      name=label,
+                                      name=self.wrap_legend_text(label),
                                       ), row=ax, col=1, secondary_y=False
                                )
             self.fig['layout'][f'yaxis{2 * ax - 1}']['range'] = [0, maxvol / self.pinf.sch.volscaling]
@@ -482,7 +484,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         xdata = [bt.num2date(x) for x in xdata]
         if self.pinf.sch.style.startswith('line'):
             if self.pinf.sch.linevalues and plinevalues:
-                datalabel += f' C:{closes[-1]:.{self.pinf.sch.decimalprecision}f}'
+                datalabel += f' C:{closes[-1]:.{self.pinf.sch.decimal_places}f}'
 
             if axdatamaster is None:
                 color = self.pinf.sch.loc
@@ -492,16 +494,18 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
 
             self.fig.add_trace(go.Scatter(x=np.array(xdata),
                                           y=np.array(closes),
-                                          name=datalabel,
+                                          name=self.wrap_legend_text(datalabel),
                                           ), row=ax, col=1, secondary_y=True
                                )
+            # self.fig['layout'][f'xaxis{ax}']['type'] = 'category'
+            self.fig['layout'][f'yaxis{2 * ax}']['tickformat'] = f'.{self.pinf.sch.decimal_places}f'
 
         else:
             if self.pinf.sch.linevalues and plinevalues:
-                datalabel += (f' O:{opens[-1]:.{self.pinf.sch.decimalprecision}f} '
-                              f'H:{highs[-1]:.{self.pinf.sch.decimalprecision}f} '
-                              f'L:{lows[-1]:.{self.pinf.sch.decimalprecision}f} '
-                              f'C:{closes[-1]:.{self.pinf.sch.decimalprecision}f}'
+                datalabel += (f' O:{opens[-1]:.{self.pinf.sch.decimal_places}f} '
+                              f'H:{highs[-1]:.{self.pinf.sch.decimal_places}f} '
+                              f'L:{lows[-1]:.{self.pinf.sch.decimal_places}f} '
+                              f'C:{closes[-1]:.{self.pinf.sch.decimal_places}f}'
                               )
             if self.pinf.sch.style.startswith('candle'):
                 self.fig.add_trace(go.Candlestick(x=np.array(xdata),
@@ -511,10 +515,12 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                                                   close=np.array(closes),
                                                   increasing_line_color=self.pinf.sch.barup,
                                                   decreasing_line_color=self.pinf.sch.bardown,
-                                                  name=datalabel,
+                                                  name=self.wrap_legend_text(datalabel),
                                                   ), row=ax, col=1, secondary_y=True
                                    )
+                # self.fig['layout'][f'xaxis{ax}']['type'] = 'category'
                 self.fig['layout'][f'xaxis{ax}']['rangeslider']['visible'] = False
+                self.fig['layout'][f'yaxis{2 * ax}']['tickformat'] = f'.{self.pinf.sch.decimal_places}f'
 
         for ind in indicators:
             self.plotind(data, ind, subinds=self.dplotsover[ind], masterax=ax, secondary_y=True)
@@ -528,7 +534,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                              subinds=self.dplotsover[downind],
                              upinds=self.dplotsup[downind],
                              downinds=self.dplotsdown[downind],
-                             secondary_y=True)
+                             )
 
         self.pinf.legpos[a] = len(self.pinf.handles[a])
 
@@ -636,3 +642,12 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         nrows += sum(len(v) for v in self.dplotsdown.values())
 
         self.pinf.nrows = nrows
+
+    def wrap_legend_text(self, s):
+        n = len(s)
+        max_length = self.pinf.sch.max_legend_text_width
+        if n > max_length:
+            s = s.replace('\n', '')
+            return '<br>'.join(s[i: i + max_length] for i in range(0, n, max_length))
+        else:
+            return s
