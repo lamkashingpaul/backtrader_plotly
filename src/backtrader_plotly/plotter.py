@@ -410,7 +410,9 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
             volalpha = 1.0
 
         maxvol = volylim = max(volumes)
-        if maxvol:
+
+        # always configure volume trace to prevent plot overlapping due to lack of volume data
+        if True:
             # Plot the overlay volume
             vollabel = label
 
