@@ -10,18 +10,52 @@ import operator
 import plotly.graph_objects as go
 
 # Mapper from matplotlib to plotly
-line_style_mapper = {
+COLOR_MAPPER = {
+    'b': 'blue',
+    'g': 'green',
+    'r': 'red',
+    'c': 'cyan',
+    'm': 'magenta',
+    'y': 'yellow',
+    'k': 'black',
+    'w': 'white',
+}
+
+LINE_STYLE_MAPPER = {
     '': 'solid',
     '--': 'dash',
     ':': 'dot',
     '-.': 'dashdot',
 }
 
-marker_style_mapper = {
+MARKER_STYLE_MAPPER = {
+    '.': 'circle',
+    ',': 'circle',
     'o': 'circle',
-    '^': 'triangle-up',
     'v': 'triangle-down',
+    '^': 'triangle-up',
+    '<': 'triangle-left',
+    '>': 'triangle-right',
+    '1': 'y-down',
+    '2': 'y-up',
+    '3': 'y-left',
+    '4': 'y-right',
+    '8': 'octagon',
+    's': 'square',
+    'p': 'pentagon',
+    'P': 'cross',
+    '*': 'star',
+    'h': 'hexagon',
+    'H': 'hexagon2',
+    '+': 'cross-thin',
+    'x': 'x-thin',
+    'X': 'x',
+    'D': 'diamond',
+    'd': 'diamond-tall',
+    '|': 'line-ns',
+    '_': 'line-ew',
 
+    # custom markers mapping
     '$\u21E7$': 'triangle-up',
     '$\u21E9$': 'triangle-down',
 }
@@ -351,10 +385,11 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         # print(ax, plotkwargs)
 
         opacity = 1
-        line = dict(color=plotkwargs['color'])  # line or marker style
+        color = self.convert_color_syntax(plotkwargs['color'])
+        line = dict(color=color, width=2)
         if 'marker' in plotkwargs:
             # Scatter plot
-            marker = dict(symbol=marker_style_mapper.get(plotkwargs['marker'], 0))
+            marker = dict(symbol=MARKER_STYLE_MAPPER.get(plotkwargs['marker'], 0), line=line)
             self.fig.add_trace(go.Scatter(mode='markers',
                                           x=np.array(xdata),
                                           y=np.array(lplotarray),
@@ -378,7 +413,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         else:
             # Line plot
             if 'ls' in plotkwargs:
-                line['dash'] = line_style_mapper[plotkwargs['ls']]
+                line['dash'] = LINE_STYLE_MAPPER[plotkwargs['ls']]
 
             self.fig.add_trace(go.Scatter(x=np.array(xdata),
                                           y=np.array(lplotarray),
@@ -653,3 +688,14 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
             return '<br>'.join(s[i: i + max_length] for i in range(0, n, max_length))
         else:
             return s
+
+    def convert_color_syntax(self, color):
+        if color.startswith('C'):
+            # Color is the i-th color in the cycle
+            return COLOR_MAPPER.values()[int(color[1:]) % len(COLOR_MAPPER)]
+
+        elif color in COLOR_MAPPER:
+            # Color is basic built-in colors of matplotlib in one letter
+            return COLOR_MAPPER[color]
+
+        return color
