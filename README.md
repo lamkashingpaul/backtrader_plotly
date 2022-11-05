@@ -6,7 +6,7 @@ This is an experimental package, and it is done by replacing original `matplotli
 
 ## Installation
 
-`$ pip install backtrader-plotly==1.3.0`
+`$ pip install backtrader-plotly==1.4.0.dev1`
 
 ## New Scheme Arguments
 
@@ -18,6 +18,8 @@ New scheme arguments are added to provide extra control
 | max_legend_text_width |            16 | It is used to limit the legend text width to prevent it from occupying the page.                                                               |
 
 ## Usage
+
+[Complete Working Example Here](main.py)
 
 ```python
 # import the package after installation

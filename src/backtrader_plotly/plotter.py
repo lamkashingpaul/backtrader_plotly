@@ -11,14 +11,22 @@ import plotly.graph_objects as go
 
 # Mapper from matplotlib to plotly
 COLOR_MAPPER = {
-    'b': 'blue',
-    'g': 'green',
-    'r': 'red',
-    'c': 'cyan',
-    'm': 'magenta',
-    'y': 'yellow',
-    'k': 'black',
-    'w': 'white',
+    'b': 'rgb(0, 0, 255)',
+    'blue': 'rgb(0, 0, 255)',
+    'g': 'rgb(0, 128, 0)',
+    'green': 'rgb(0, 128, 0)',
+    'r': 'rgb(255, 0, 0)',
+    'red': 'rgb(255, 0, 0)',
+    'c': 'rgb(0, 255, 255)',
+    'cyan': 'rgb(0, 255, 255)',
+    'm': 'rgb(255, 0, 255)',
+    'magenta': 'rgb(255, 0, 255)',
+    'y': 'rgb(255, 255, 0)',
+    'yellow': 'rgb(255, 255, 0)',
+    'k': 'rgb(0, 0, 0)',
+    'black': 'rgb(0, 0, 0)',
+    'w': 'rgb(255, 255, 255)',
+    'white': 'rgb(255, 255, 255)',
 }
 
 LINE_STYLE_MAPPER = {
@@ -288,12 +296,9 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
             if lineplotinfo._get('_plotskip', False):
                 continue
 
-            # Legend label only when plotting 1st line
-            if masterax and not ind.plotinfo.plotlinelabels:
-                label = indlabel * (not toskip) or '_nolegend'
-            else:
-                label = (indlabel + '\n') * (not toskip)
-                label += lineplotinfo._get('_name', '') or linealias
+            # Always give legend label
+            label = (indlabel + '\n') * (not toskip)
+            label += lineplotinfo._get('_name', '') or linealias
 
             toskip -= 1  # one line less until legend can be added
 
@@ -367,11 +372,11 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                     if isinstance(fcol, (list, tuple)):
                         fcol, falpha = fcol
 
-                    ax.fill_between(self.pinf.xdata, y1, y2,
-                                    facecolor=fcol,
-                                    alpha=falpha,
-                                    interpolate=True,
-                                    **kwargs)
+                    color = COLOR_MAPPER[fcol]
+                    if fop is operator.lt:
+                        y1, y2 = y2, y1  # always set such y1 >= y2 for plotting
+
+                    self.fill_between(ax, xdata, y1, y2, color, falpha, secondary_y=secondary_y, **kwargs)
 
         # plot subindicators that were created on self
         for subind in subinds:
@@ -689,6 +694,9 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
         else:
             return s
 
+    def rgb_to_rgba(self, rgb, opacity):
+        return f'rgba{rgb[3:-1]}, {opacity})'
+
     def convert_color_syntax(self, color):
         if color.startswith('C'):
             # Color is the i-th color in the cycle
@@ -699,3 +707,29 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
             return COLOR_MAPPER[color]
 
         return color
+
+    def fill_between(self, ax, x, y1, y2, color, opacity, secondary_y=False, **kwargs):
+        color = self.rgb_to_rgba(color, opacity)
+        x = np.array(x)
+        y1 = np.array(y1)
+        y2 = np.array(y2)
+
+        where = kwargs.get('where', None)
+        if where is not None:
+            for i in range(len(x)):
+                if not where[i]:
+                    y2[i] = y1[i]
+
+        self.fig.add_trace(go.Scatter(x=x,
+                                      y=y2,
+                                      line=dict(color=color),
+                                      ), row=ax, col=1, secondary_y=secondary_y
+                           )
+
+        self.fig.add_trace(go.Scatter(x=x,
+                                      y=y1,
+                                      fill='tonexty',
+                                      fillcolor=color,
+                                      line=dict(color=color),
+                                      ), row=ax, col=1, secondary_y=secondary_y
+                           )
