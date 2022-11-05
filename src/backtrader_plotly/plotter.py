@@ -407,7 +407,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                                       y=np.array(lplotarray),
                                       name=self.wrap_legend_text(plotkwargs['label']),
                                       opacity=opacity,
-                                      width=plotkwargs['width'],
+                                      marker_color=color,
                                       ), row=ax, col=1, secondary_y=secondary_y
                                )
         else:
