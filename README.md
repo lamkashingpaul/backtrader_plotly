@@ -6,16 +6,20 @@ This is an experimental package, and it is done by replacing original `matplotli
 
 ## Installation
 
-`$ pip install backtrader-plotly==1.4.0.dev1`
+`$ pip install backtrader-plotly==1.4.0`
 
-## New Scheme Arguments
+## Features
 
-New scheme arguments are added to provide extra control
+- Support for Filled Area Plotting and Toggling (Added from 1.4.0)
 
-| Name of Argument      | Default Value | Description                                                                                                                                    |
-| :-------------------- | ------------: | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| decimal_places        |             5 | It is used to control the number of decimal places of price shown on the plot. For instance, forex price usually consists of 5 decimal places. |
-| max_legend_text_width |            16 | It is used to limit the legend text width to prevent it from occupying the page.                                                               |
+- New Scheme Arguments (Added from 1.3.0)
+
+  Additional scheme arguments are added to provide extra control
+
+  | Name of Argument      | Default Value | Description                                                                                                                                    |
+  | :-------------------- | ------------: | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+  | decimal_places        |             5 | It is used to control the number of decimal places of price shown on the plot. For instance, forex price usually consists of 5 decimal places. |
+  | max_legend_text_width |            16 | It is used to limit the legend text width to prevent it from occupying the page.                                                               |
 
 ## Usage
 
