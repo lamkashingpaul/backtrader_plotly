@@ -364,7 +364,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                         l2 = getattr(ind, fref)
                         prl2 = l2.plotrange(self.pinf.xstart, self.pinf.xend)
                         y2 = np.array(prl2)
-                    kwargs = dict()
+                    kwargs = dict(plotkwargs)
                     if fop is not None:
                         kwargs['where'] = fop(y1, y2)
 
@@ -372,11 +372,14 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
                     if isinstance(fcol, (list, tuple)):
                         fcol, falpha = fcol
 
-                    color = COLOR_MAPPER[fcol]
-                    if fop is operator.lt:
-                        y1, y2 = y2, y1  # always set such y1 >= y2 for plotting
+                    kwargs['color'] = fcol
+                    kwargs['opacity'] = falpha
+                    kwargs['attr'] = fattr
 
-                    self.fill_between(ax, xdata, y1, y2, color, falpha, secondary_y=secondary_y, **kwargs)
+                    if fop is operator.lt:
+                        y1, y2 = y2, y1  # always set such that y1 >= y2 for correct plotting
+
+                    self.fill_between(ax, xdata, y1, y2, secondary_y=secondary_y, **kwargs)
 
         # plot subindicators that were created on self
         for subind in subinds:
@@ -708,26 +711,34 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
 
         return color
 
-    def fill_between(self, ax, x, y1, y2, color, opacity, secondary_y=False, **kwargs):
+    def fill_between(self, ax, x, y1, y2, secondary_y=False, **kwargs):
+        color = COLOR_MAPPER[kwargs.get('color', 'black')]
+        opacity = kwargs.get('opacity', 1)
         color = self.rgb_to_rgba(color, opacity)
+
         x = np.array(x)
         y1 = np.array(y1)
         y2 = np.array(y2)
-
         where = kwargs.get('where', None)
         if where is not None:
-            for i in range(len(x)):
-                if not where[i]:
-                    y2[i] = y1[i]
+            y2[where == False] = y1[where == False]
+
+        name = f'{kwargs.get("attr", "")}_{kwargs.get("label", "")}'
+        legendgroup = f'{name}_{ax}'
 
         self.fig.add_trace(go.Scatter(x=x,
                                       y=y2,
+                                      name=self.wrap_legend_text(name),
+                                      legendgroup=legendgroup,
+                                      showlegend=False,
                                       line=dict(color=color),
                                       ), row=ax, col=1, secondary_y=secondary_y
                            )
 
         self.fig.add_trace(go.Scatter(x=x,
                                       y=y1,
+                                      name=self.wrap_legend_text(name),
+                                      legendgroup=legendgroup,
                                       fill='tonexty',
                                       fillcolor=color,
                                       line=dict(color=color),
