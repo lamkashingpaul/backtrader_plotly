@@ -6,9 +6,11 @@ This is an experimental package, and it is done by replacing original `matplotli
 
 ## Installation
 
-`$ pip install backtrader-plotly==1.4.0`
+`$ pip install backtrader-plotly==1.5.0.dev1`
 
 ## Features
+
+- Support for Multiple Strategies Plotting (Added from 1.5.0.dev1)
 
 - Support for Filled Area Plotting and Toggling (Added from 1.4.0)
 
@@ -37,16 +39,27 @@ import backtrader as bt
 # for instance
 cerebro = bt.Cerebro()
 
+# add strategies
+cerebro.addstrategy(IchimokuStrategy)
+cerebro.addstrategy(SMACrossStrategy)
+
 # after adding data and strategy
 cerebro.run()
 
 # define plot scheme with new additional scheme arguments
 scheme = PlotScheme(decimal_places=5, max_legend_text_width=16)
 
-# plot and save figures as `plotly` graph object
-figs = cerebro.plot(BacktraderPlotly(show=True, scheme=scheme))
-figs = [x for fig in figs for x in fig]  # flatten output
-for fig in figs:
-    plotly.io.to_html(fig, full_html=False)  # open html in the browser
-    plotly.io.write_html(fig, file='plot.html')  # save the html file
+figs = cerebro.plot(BacktraderPlotly(show=False, scheme=scheme))
+
+# directly manipulate object using methods provided by `plotly`
+for i, each_run in enumerate(figs):
+    for j, each_strategy_fig in enumerate(each_run):
+        # open plot in browser
+        each_strategy_fig.show()
+
+        # save the html of the plot to a variable
+        html = plotly.io.to_html(each_strategy_fig, full_html=False)
+
+        # write html to disk
+        plotly.io.write_html(each_strategy_fig, f'{i}_{j}.html', full_html=True)
 ```
