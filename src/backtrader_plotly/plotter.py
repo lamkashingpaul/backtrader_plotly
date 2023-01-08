@@ -123,6 +123,7 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
     )
 
     def __init__(self, **kwargs):
+        self.figs = []
         for pname, pvalue in kwargs.items():
             setattr(self.p.scheme, pname, pvalue)
 
@@ -227,6 +228,8 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
 
             # for i in range(self.pinf.nrows):
             #     self.fig['layout'][f'xaxis{i + 1}']['showticklabels'] = True
+
+        self.figs.extend(figs)
 
         return figs
 
@@ -585,7 +588,8 @@ class BacktraderPlotly(metaclass=bt.MetaParams):
 
     def show(self):
         if self.p.show:
-            self.fig.show()
+            for fig in self.figs:
+                fig.show()
 
     def sortdataindicators(self, strategy):
         # These lists/dictionaries hold the subplots that go above each data
