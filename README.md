@@ -6,7 +6,7 @@ This is an experimental package, and it is done by replacing original `matplotli
 
 ## Installation
 
-`$ pip install backtrader-plotly==1.5.0.dev1`
+`$ pip install backtrader-plotly==1.5.0`
 
 ## Features
 
